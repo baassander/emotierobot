@@ -18,6 +18,17 @@ root.title("Robot Face Controller")
 
 sliders = {}
 
+random_mode = False
+
+def toggle_random():
+    global random_mode
+
+    if random_mode:
+        random_mode = False
+    else:
+        random_mode = True
+        threading.Thread(target=random_loop, daemon=True).start()
+
 # ------------ SLIDER MAKER ------------
 
 def make_slider(name, cmd, minv, maxv, default):
@@ -63,58 +74,133 @@ make_slider("Head", "HEAD", 70, 110, 90)
 
 def emotion_happy():
 
-    sliders["MOUTH"].set(75)
-    sliders["BUD"].set(100)
-    sliders["LID"].set(85)
     sliders["LR"].set(90)
-    sliders["UD"].set(85)
-
+    sliders["UD"].set(90)
+    sliders["LID"].set(100)
+    sliders["BUD"].set(95)
+    sliders["BLR"].set(90)
+    sliders["MOUTH"].set(70)
+    sliders["HEAD"].set(90)
+    
 def emotion_angry():
-
-    sliders["MOUTH"].set(115)
-    sliders["BUD"].set(85)
-    sliders["BLR"].set(75)
-    sliders["LID"].set(95)
+    sliders["LR"].set(90)
+    sliders["UD"].set(100)
+    sliders["LID"].set(110)
+    sliders["BUD"].set(80)
+    sliders["BLR"].set(110)
+    sliders["MOUTH"].set(90)
+    sliders["HEAD"].set(90)
 
 def emotion_sad():
 
-    sliders["MOUTH"].set(120)
-    sliders["BUD"].set(80)
-    sliders["LID"].set(100)
+    sliders["LR"].set(90)
     sliders["UD"].set(100)
+    sliders["LID"].set(100)
+    sliders["BUD"].set(90)
+    sliders["BLR"].set(70)
+    sliders["MOUTH"].set(120)
+    sliders["HEAD"].set(90)
 
 # ------------ RANDOM MODE ------------
-
-random_mode = False
 
 def random_loop():
 
     global random_mode
 
+    lr = 90
+    ud = 90
+    head = 90
+    mouth = 105
+
+    next_eye_move = 0
+    next_head_move = 0
+    next_mouth_move = 0
+
     while random_mode:
 
-        sliders["LR"].set(random.randint(80,100))
-        sliders["UD"].set(random.randint(60,120))
-        sliders["BUD"].set(random.randint(80,105))
-        sliders["BLR"].set(random.randint(70,115))
-        sliders["HEAD"].set(random.randint(70,110))
+        now = time.time()
 
-        if random.random() < 0.4:
-            sliders["LID"].set(random.randint(85,115))
+        # -------- OGEN --------
+        if now > next_eye_move:
 
-        if random.random() < 0.3:
-            sliders["MOUTH"].set(random.randint(70,120))
+            lr_target = random.randint(80,100)
 
-        time.sleep(random.uniform(0.6,2))
+            if random.random() < 0.6:
+                ud_target = random.randint(60,120)
+            else:
+                ud_target = ud
 
-def toggle_random():
+            # snelle saccade
+            steps = 8
 
-    global random_mode
+            for i in range(steps):
 
-    random_mode = not random_mode
+                lr += (lr_target - lr) / (steps - i)
+                ud += (ud_target - ud) / (steps - i)
 
-    if random_mode:
-        threading.Thread(target=random_loop,daemon=True).start()
+                sliders["LR"].set(lr)
+                sliders["UD"].set(ud)
+
+                time.sleep(0.01)
+
+            next_eye_move = now + random.uniform(0.6,2.0)
+
+        # -------- KNIPPEREN --------
+        if random.random() < 0.01:
+
+            sliders["LID"].set(120)
+            time.sleep(0.05)
+            sliders["LID"].set(90)
+
+        # -------- WENKBRAUWEN --------
+        if random.random() < 0.02:
+
+            sliders["BUD"].set(random.randint(80,105))
+
+        if random.random() < 0.02:
+
+            sliders["BLR"].set(random.randint(70,115))
+
+        # -------- MOND --------
+        if now > next_mouth_move:
+
+            emotion = random.random()
+
+            if emotion < 0.4:
+                mouth_target = 105
+            elif emotion < 0.7:
+                mouth_target = 75
+            else:
+                mouth_target = 120
+
+            steps = 20
+
+            for i in range(steps):
+
+                mouth += (mouth_target - mouth) / (steps - i)
+                sliders["MOUTH"].set(mouth)
+
+                time.sleep(0.03)
+
+            next_mouth_move = now + random.uniform(1.5,4)
+
+        # -------- HOOFD --------
+        if now > next_head_move:
+
+            head_target = random.randint(70,110)
+
+            steps = 40
+
+            for i in range(steps):
+
+                head += (head_target - head) / (steps - i)
+                sliders["HEAD"].set(head)
+
+                time.sleep(0.03)
+
+            next_head_move = now + random.uniform(10,20)
+
+        time.sleep(0.02)
 
 # ------------ BUTTONS ------------
 

@@ -1,0 +1,55 @@
+import tkinter as tk
+import serial
+
+PORT = "COM3"
+BAUD = 115200
+
+ser = serial.Serial(PORT, BAUD)
+
+def send(cmd, value):
+    msg = f"{cmd}:{value}\n"
+    ser.write(msg.encode())
+
+def slider(cmd):
+    return lambda v: send(cmd, v)
+
+root = tk.Tk()
+root.title("Animatronic Face Control")
+root.geometry("400x600")
+
+def make_slider(name, cmd, minv, maxv, start):
+
+    frame = tk.Frame(root)
+    frame.pack(pady=10)
+
+    label = tk.Label(frame, text=name)
+    label.pack()
+
+    scale = tk.Scale(
+        frame,
+        from_=minv,
+        to=maxv,
+        orient="horizontal",
+        length=300,
+        resolution=1,
+        command=slider(cmd)
+    )
+
+    scale.set(start)
+    scale.pack()
+
+# sliders
+
+make_slider("Eyes Left/Right", "LR", 80, 100, 90)
+make_slider("Eyes Up/Down", "UD", 60, 120, 90)
+
+make_slider("Eyelid", "LID", 75, 120, 90)
+
+make_slider("Brow Up/Down", "BUD", 80, 105, 90)
+make_slider("Brow Left/Right", "BLR", 70, 115, 90)
+
+make_slider("Mouth", "MOUTH", 70, 120, 105)
+
+make_slider("Head", "HEAD", 70, 110, 90)
+
+root.mainloop()

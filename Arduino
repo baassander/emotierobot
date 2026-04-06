@@ -1,0 +1,186 @@
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+
+Adafruit_PWMServoDriver pwm(0x40);
+
+#define SERVOMIN 90
+#define SERVOMAX 560
+
+// ---------------- SERVOS ----------------
+const int servoLR   = 0;
+const int servoUD   = 1;
+const int servoLID  = 2;
+const int servoBUD  = 3;
+const int servoBLR  = 4;
+const int servoMOUTH = 5;
+const int servoHEAD  = 6;
+
+// ---------------- LIMITS ----------------
+const float lr_min = 80, lr_max = 100;
+const float ud_min = 60, ud_max = 120;
+
+const float brow_ud_min = 80;
+const float brow_ud_max = 105;
+
+const float brow_lr_min = 70;
+const float brow_lr_max = 115;
+
+const float mouth_happy = 70;
+const float mouth_sad   = 120;
+
+const float head_min = 70;
+const float head_max = 110;
+
+// ---------------- POSITIES ----------------
+float lr_pos = 90;
+float ud_pos = 90;
+float lid_pos = 90;
+float brow_ud_pos = 90;
+float brow_lr_pos = 90;
+float mouth_pos = 90;
+float head_pos = 90;
+
+// ---------------- TARGETS ----------------
+float lr_target = 90;
+float ud_target = 90;
+float lid_target = 90;
+float brow_ud_target = 90;
+float brow_lr_target = 90;
+float mouth_target = 90;
+float head_target = 90;
+
+// ---------------- SPEED ----------------
+const float eye_speed = 200;
+const float lid_speed = 300;
+const float brow_speed = 80;
+const float mouth_speed = 50;
+const float head_speed = 40;
+
+// ---------------- TIMING ----------------
+unsigned long lastUpdate = 0;
+const unsigned long updateInterval = 8;
+
+// ---------------- HELPER ----------------
+int gradenNaarPWM(float graden) {
+
+  graden = constrain(graden,0,180);
+
+  return map(graden * 100, 0, 18000, SERVOMIN, SERVOMAX);
+}
+
+// ---------------- SERIAL PARSER ----------------
+void readSerial() {
+
+  if (!Serial.available()) return;
+
+  String msg = Serial.readStringUntil('\n');
+
+  int val;
+
+  if (msg.startsWith("LR:")) {
+    val = msg.substring(3).toInt();
+    lr_target = constrain(val, lr_min, lr_max);
+  }
+
+  if (msg.startsWith("UD:")) {
+    val = msg.substring(3).toInt();
+    ud_target = constrain(val, ud_min, ud_max);
+  }
+
+  if (msg.startsWith("LID:")) {
+    val = msg.substring(4).toInt();
+    lid_target = constrain(val, 75, 120);
+  }
+
+  if (msg.startsWith("BUD:")) {
+    val = msg.substring(4).toInt();
+    brow_ud_target = constrain(val, brow_ud_min, brow_ud_max);
+  }
+
+  if (msg.startsWith("BLR:")) {
+    val = msg.substring(4).toInt();
+    brow_lr_target = constrain(val, brow_lr_min, brow_lr_max);
+  }
+
+  if (msg.startsWith("MOUTH:")) {
+    val = msg.substring(6).toInt();
+    mouth_target = constrain(val, mouth_happy, mouth_sad);
+  }
+
+  if (msg.startsWith("HEAD:")) {
+    val = msg.substring(5).toInt();
+    head_target = constrain(val, head_min, head_max);
+  }
+
+}
+
+// ---------------- SMOOTH MOVE ----------------
+void smoothMove(float &pos, float target, float speed, float dt) {
+
+  float dist = target - pos;
+
+  pos += constrain(dist, -speed * dt, speed * dt);
+
+}
+
+// ---------------- SET SERVO ----------------
+void setServo(int ch, float pos) {
+
+  pwm.setPWM(ch,0,gradenNaarPWM(pos));
+
+}
+
+// ---------------- SETUP ----------------
+void setup() {
+
+  Serial.begin(115200);
+
+  pwm.begin();
+  pwm.setPWMFreq(50);
+
+  delay(500);
+
+}
+
+// ---------------- LOOP ----------------
+void loop() {
+
+  readSerial();
+
+  unsigned long now = millis();
+
+  if(now - lastUpdate < updateInterval) return;
+
+  float dt = (now-lastUpdate)/1000.0;
+
+  lastUpdate = now;
+
+  // ogen
+  smoothMove(lr_pos, lr_target, eye_speed, dt);
+  smoothMove(ud_pos, ud_target, eye_speed, dt);
+
+  // ooglid
+  smoothMove(lid_pos, lid_target, lid_speed, dt);
+
+  // wenkbrauw UD
+  smoothMove(brow_ud_pos, brow_ud_target, brow_speed, dt);
+
+  // wenkbrauw LR
+  smoothMove(brow_lr_pos, brow_lr_target, brow_speed, dt);
+
+  // mond
+  smoothMove(mouth_pos, mouth_target, mouth_speed, dt);
+
+  // hoofd
+  smoothMove(head_pos, head_target, head_speed, dt);
+
+  // servo sturen
+  setServo(servoLR,lr_pos);
+  setServo(servoUD,ud_pos);
+  setServo(servoLID,lid_pos);
+  setServo(servoBUD,brow_ud_pos);
+  setServo(servoBLR,brow_lr_pos);
+  setServo(servoMOUTH,mouth_pos);
+  setServo(servoHEAD,head_pos);
+
+}

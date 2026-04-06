@@ -1,44 +1,51 @@
 import tkinter as tk
 import serial
+import threading
+import random
+import time
 
-PORT = "COM3"
-BAUD = 115200
+# ------------ SERIAL ------------
 
-ser = serial.Serial(PORT, BAUD)
+ser = serial.Serial("COM3",115200)
 
-def send(cmd, value):
-    msg = f"{cmd}:{value}\n"
-    ser.write(msg.encode())
+def send(cmd,val):
+    ser.write(f"{cmd}:{int(val)}\n".encode())
 
-def slider(cmd):
-    return lambda v: send(cmd, v)
+# ------------ GUI ------------
 
 root = tk.Tk()
-root.title("Animatronic Face Control")
-root.geometry("400x600")
+root.title("Robot Face Controller")
 
-def make_slider(name, cmd, minv, maxv, start):
+sliders = {}
+
+# ------------ SLIDER MAKER ------------
+
+def make_slider(name, cmd, minv, maxv, default):
 
     frame = tk.Frame(root)
-    frame.pack(pady=10)
+    frame.pack()
 
-    label = tk.Label(frame, text=name)
-    label.pack()
+    label = tk.Label(frame,text=name,width=15)
+    label.pack(side="left")
 
-    scale = tk.Scale(
-        frame,
-        from_=minv,
-        to=maxv,
-        orient="horizontal",
-        length=300,
-        resolution=1,
-        command=slider(cmd)
-    )
+    slider = tk.Scale(frame,
+                      from_=minv,
+                      to=maxv,
+                      orient="horizontal",
+                      length=250,
+                      resolution=1)
 
-    scale.set(start)
-    scale.pack()
+    slider.set(default)
+    slider.pack(side="left")
 
-# sliders
+    sliders[cmd] = slider
+
+    def update(val):
+        send(cmd,val)
+
+    slider.config(command=update)
+
+# ------------ SLIDERS ------------
 
 make_slider("Eyes Left/Right", "LR", 80, 100, 90)
 make_slider("Eyes Up/Down", "UD", 60, 120, 90)
@@ -51,5 +58,72 @@ make_slider("Brow Left/Right", "BLR", 70, 115, 90)
 make_slider("Mouth", "MOUTH", 70, 120, 105)
 
 make_slider("Head", "HEAD", 70, 110, 90)
+
+# ------------ EMOTIES ------------
+
+def emotion_happy():
+
+    sliders["MOUTH"].set(75)
+    sliders["BUD"].set(100)
+    sliders["LID"].set(85)
+    sliders["LR"].set(90)
+    sliders["UD"].set(85)
+
+def emotion_angry():
+
+    sliders["MOUTH"].set(115)
+    sliders["BUD"].set(85)
+    sliders["BLR"].set(75)
+    sliders["LID"].set(95)
+
+def emotion_sad():
+
+    sliders["MOUTH"].set(120)
+    sliders["BUD"].set(80)
+    sliders["LID"].set(100)
+    sliders["UD"].set(100)
+
+# ------------ RANDOM MODE ------------
+
+random_mode = False
+
+def random_loop():
+
+    global random_mode
+
+    while random_mode:
+
+        sliders["LR"].set(random.randint(80,100))
+        sliders["UD"].set(random.randint(60,120))
+        sliders["BUD"].set(random.randint(80,105))
+        sliders["BLR"].set(random.randint(70,115))
+        sliders["HEAD"].set(random.randint(70,110))
+
+        if random.random() < 0.4:
+            sliders["LID"].set(random.randint(85,115))
+
+        if random.random() < 0.3:
+            sliders["MOUTH"].set(random.randint(70,120))
+
+        time.sleep(random.uniform(0.6,2))
+
+def toggle_random():
+
+    global random_mode
+
+    random_mode = not random_mode
+
+    if random_mode:
+        threading.Thread(target=random_loop,daemon=True).start()
+
+# ------------ BUTTONS ------------
+
+btn_frame = tk.Frame(root)
+btn_frame.pack(pady=15)
+
+tk.Button(btn_frame,text="😀 Happy",width=10,command=emotion_happy).pack(side="left")
+tk.Button(btn_frame,text="😡 Angry",width=10,command=emotion_angry).pack(side="left")
+tk.Button(btn_frame,text="😢 Sad",width=10,command=emotion_sad).pack(side="left")
+tk.Button(btn_frame,text="🎲 Random",width=10,command=toggle_random).pack(side="left")
 
 root.mainloop()
